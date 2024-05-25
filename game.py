@@ -4,6 +4,8 @@ from time import sleep
 import argparse
 import random
 import json
+import numpy as np
+from waiting import wait
 
 def get_all_values(d):
     values = []
@@ -61,6 +63,7 @@ allPlayersIp.add(str((myIPAddr,multicast_port_me)))
 readyPlayer = set()
 readyState = False
 randomPlayerChoice = {}
+cardChoice = None
 
 def reportPresence():
     if(args.debug):
@@ -70,6 +73,7 @@ def reportPresence():
         s.sendto(json.dumps({"api":"i'm ready"}).encode(),(multicast_group,multicast_port_other))
 
 def listen():
+    global cardChoice
     while True:
         data, address = s.recvfrom(500)
         data = json.loads(data.decode())
@@ -83,9 +87,10 @@ def listen():
             print(str((address[0],address[1])) + " is ready")
             readyPlayer.add((address[0],address[1]))
         if(data["api"] == "random player choice"):
-            randomPlayerChoice[str((address[0],address[1]))] = data["choice"]
-            if(args.debug):
-                print(randomPlayerChoice)
+            randomPlayerChoice[str((address[0],address[1]))] = (data["choice"])
+        if(data["api"] == "random card choice"):
+            cardChoice = data["choice"]
+            print(cardChoice)
 
 def readyToPlay():
     readyPlayer.add(str((myIPAddr,multicast_port_me)))
@@ -105,7 +110,7 @@ x.start()
 reportPresence()
 waitingRoom()
 
-allCard = ["0","1","2","3","4","5","6","7","8","9","invert","+2","+4","colorChange","pass"]
+allCards = ["0","1","2","3","4","5","6","7","8","9","invert","+2","+4","colorChange","pass"]
 color = ["red","green","blue","yellow"]
 PlayersCard = {}
 
@@ -113,14 +118,13 @@ for player in allPlayersIp:
     PlayersCard[str(player)] = set()
 
 def pickARandomPlayer():
-    x = threading.Thread(target=listen)
-    x.start()
+    global randomPlayerChoice
     choice = random.choice(list(allPlayersIp))
     randomPlayerChoice[str((myIPAddr,multicast_port_me))] = choice
+    if(args.debug):
+        print("Je choisis : "+choice)
     s.sendto(json.dumps({"api":"random player choice","choice":choice}).encode(),(multicast_group,multicast_port_other))
-    while len(randomPlayerChoice) != len(allPlayersIp):
-        continue
-    result = get_all_values(randomPlayerChoice)
+    result = get_all_values(randomPlayerChoice.copy())
     for player in result:
         if(result.count(player) > 1):
             return player
@@ -129,13 +133,19 @@ def pickARandomPlayer():
 def getAllCardSum():
     count = 0
     for player in allPlayersIp:
-        count += PlayersCard[str(player)]
+        count += len(PlayersCard[str(player)])
     return count
 
-def chooseAllPlayersDeck():
-    while(getAllCardSum() < len(allPlayersIp)*8):
-        continue
+playerLockCount = -1
+
+def pickARandomCard():
+    choice = {"card":random.choice(allCards),"color":random.choice(color)}
+    s.sendto(json.dumps({"api":"random card choice","choice":choice}).encode(),(multicast_group,multicast_port_other))
+    return choice
 
 
-
-print(pickARandomPlayer())
+currentPlayer = pickARandomPlayer()
+print(currentPlayer)
+if(currentPlayer == str((myIPAddr,multicast_port_me))):
+    cardChoice = pickARandomCard()
+    print(cardChoice)
