@@ -64,6 +64,7 @@ readyPlayer = set()
 readyState = False
 randomPlayerChoice = {}
 cardChoice = None
+playersDeck = {str((myIPAddr,multicast_port_me)):[]}
 
 def reportPresence():
     if(args.debug):
@@ -82,6 +83,7 @@ def listen():
         if(str((address[0],address[1])) not in allPlayersIp):
             allPlayersIp.add(str((address[0],address[1])))
             print(str((address[0],address[1])) + " is here")
+            playersDeck[str((address[0],address[1]))] = []
             reportPresence()
         if(data["api"] == "i'm ready"):
             print(str((address[0],address[1])) + " is ready")
@@ -107,6 +109,7 @@ def waitingRoom():
 
 x = threading.Thread(target=listen)
 x.start()
+sleep(0.5)
 reportPresence()
 waitingRoom()
 
@@ -118,13 +121,17 @@ for player in allPlayersIp:
     PlayersCard[str(player)] = set()
 
 def pickARandomPlayer():
+    sleep(0.15)
     global randomPlayerChoice
     choice = random.choice(list(allPlayersIp))
     randomPlayerChoice[str((myIPAddr,multicast_port_me))] = choice
     if(args.debug):
         print("Je choisis : "+choice)
     s.sendto(json.dumps({"api":"random player choice","choice":choice}).encode(),(multicast_group,multicast_port_other))
+    while len(randomPlayerChoice) != len(allPlayersIp):
+        continue
     result = get_all_values(randomPlayerChoice.copy())
+    randomPlayerChoice = {}
     for player in result:
         if(result.count(player) > 1):
             return player
@@ -143,9 +150,27 @@ def pickARandomCard():
     s.sendto(json.dumps({"api":"random card choice","choice":choice}).encode(),(multicast_group,multicast_port_other))
     return choice
 
+def countAllCard():
+    allDeck = []
+    for i in playersDeck:
+        allDeck += playersDeck[i]
+    count = 0
+    for i in allDeck:
+        count += len(i)
+    return count
 
-currentPlayer = pickARandomPlayer()
-print(currentPlayer)
-if(currentPlayer == str((myIPAddr,multicast_port_me))):
-    cardChoice = pickARandomCard()
-    print(cardChoice)
+def defineAllDeck():
+    global cardChoice
+    while(countAllCard() < len(allPlayersIp)*8):
+        cardChoice = None
+        choosingPlayer = pickARandomPlayer()
+        targetPlayer = pickARandomPlayer()
+
+        if(choosingPlayer == str((myIPAddr,multicast_port_me))):
+            cardChoice = pickARandomCard()
+        while(cardChoice == None):
+            continue
+        playersDeck[targetPlayer].append(cardChoice)
+    print(playersDeck)
+
+defineAllDeck()
