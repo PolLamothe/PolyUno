@@ -4,8 +4,6 @@ from time import sleep
 import argparse
 import random
 import json
-import numpy as np
-from waiting import wait
 
 def get_all_values(d):
     values = []
