@@ -62,7 +62,9 @@ readyPlayer = set()
 readyState = False
 randomPlayerChoice = {}
 cardChoice = None
+playersOrder = []
 playersDeck = {str((myIPAddr,multicast_port_me)):[]}
+otherPlayersDeckVersions = {}
 
 def reportPresence():
     if(args.debug):
@@ -73,8 +75,10 @@ def reportPresence():
 
 def listen():
     global cardChoice
+    global otherPlayersDeckVersions
+    global playersOrder
     while True:
-        data, address = s.recvfrom(500)
+        data, address = s.recvfrom(2048)
         data = json.loads(data.decode())
         if(args.debug):
             print(data)
@@ -87,10 +91,15 @@ def listen():
             print(str((address[0],address[1])) + " is ready")
             readyPlayer.add((address[0],address[1]))
         if(data["api"] == "random player choice"):
+            while len(playersOrder) == 0:
+                continue
             randomPlayerChoice[str((address[0],address[1]))] = (data["choice"])
+            playersOrder.pop(0)
         if(data["api"] == "random card choice"):
             cardChoice = data["choice"]
             print(cardChoice)
+        if(data["api"] == "deck version"):
+            otherPlayersDeckVersions[str((address[0],address[1]))] = data["deck"]
 
 def readyToPlay():
     readyPlayer.add(str((myIPAddr,multicast_port_me)))
@@ -126,23 +135,28 @@ def chooseRandomPlayerDeckNotFull():
     return random.choice(allPlayers)
 
 def pickARandomPlayer(definingDeck = False):
-    sleep(0.15)
     global randomPlayerChoice
+    global playersOrder
     if(not definingDeck):
         choice = random.choice(list(allPlayersIp))
     else:
         choice = chooseRandomPlayerDeckNotFull()
-    randomPlayerChoice[str((myIPAddr,multicast_port_me))] = choice
     if(args.debug):
         print("Je choisis : "+choice)
-    s.sendto(json.dumps({"api":"random player choice","choice":choice}).encode(),(multicast_group,multicast_port_other))
-    while len(randomPlayerChoice) != len(allPlayersIp):
-        continue
+    playersOrder = sorted(allPlayersIp)
+    while len(playersOrder) > 0:
+        if(playersOrder.count((str((myIPAddr,multicast_port_me)))) > 0):
+            if(playersOrder[0] == str((myIPAddr,multicast_port_me))):
+                s.sendto(json.dumps({"api":"random player choice","choice":choice}).encode(),(multicast_group,multicast_port_other))
+                randomPlayerChoice[str((myIPAddr,multicast_port_me))] = choice
+                playersOrder.pop(0)
     result = get_all_values(randomPlayerChoice.copy())
     randomPlayerChoice = {}
     for player in result:
         if(result.count(player) > 1):
+            playersOrder = []
             return player
+    playersOrder = []
     return pickARandomPlayer()
 
 def getAllCardSum():
@@ -170,11 +184,22 @@ def defineAllDeck():
         cardChoice = None
         choosingPlayer = pickARandomPlayer()
         targetPlayer = pickARandomPlayer(definingDeck=True)
-
         if(choosingPlayer == str((myIPAddr,multicast_port_me))):
             cardChoice = pickARandomCard()
         while(cardChoice == None):
             continue
         playersDeck[targetPlayer].append(cardChoice)
+    otherPlayersDeckVersions[str((myIPAddr,multicast_port_me))] = playersDeck
+    s.sendto(json.dumps({"api":"deck version","deck":playersDeck}).encode(),(multicast_group,multicast_port_other))
+    while len(otherPlayersDeckVersions) < len(allPlayersIp):
+        continue
+    allDecks = set()
+    for player in otherPlayersDeckVersions:
+        allDecks.add(json.dumps(otherPlayersDeckVersions[player],sort_keys=True))
+    if(len(allDecks) > 1):
+        print("les decks ne sont pas synchronisés")
+        print(allDecks)
+    else:
+        print("les decks sont synchronisés")
 
 defineAllDeck()
