@@ -109,7 +109,7 @@ def waitingRoom():
 
 x = threading.Thread(target=listen)
 x.start()
-sleep(0.5)
+sleep(0.1)
 reportPresence()
 waitingRoom()
 
@@ -120,10 +120,20 @@ PlayersCard = {}
 for player in allPlayersIp:
     PlayersCard[str(player)] = set()
 
-def pickARandomPlayer():
+def chooseRandomPlayerDeckNotFull():
+    allPlayers = list(allPlayersIp.copy())
+    for i in playersDeck:
+        if(len(playersDeck[i]) == 8):
+            allPlayers.remove(i)
+    return random.choice(allPlayers)
+
+def pickARandomPlayer(definingDeck = False):
     sleep(0.15)
     global randomPlayerChoice
-    choice = random.choice(list(allPlayersIp))
+    if(not definingDeck):
+        choice = random.choice(list(allPlayersIp))
+    else:
+        choice = chooseRandomPlayerDeckNotFull()
     randomPlayerChoice[str((myIPAddr,multicast_port_me))] = choice
     if(args.debug):
         print("Je choisis : "+choice)
@@ -154,23 +164,19 @@ def countAllCard():
     allDeck = []
     for i in playersDeck:
         allDeck += playersDeck[i]
-    count = 0
-    for i in allDeck:
-        count += len(i)
-    return count
+    return len(allDeck)
 
 def defineAllDeck():
     global cardChoice
     while(countAllCard() < len(allPlayersIp)*8):
         cardChoice = None
         choosingPlayer = pickARandomPlayer()
-        targetPlayer = pickARandomPlayer()
+        targetPlayer = pickARandomPlayer(definingDeck=True)
 
         if(choosingPlayer == str((myIPAddr,multicast_port_me))):
             cardChoice = pickARandomCard()
         while(cardChoice == None):
             continue
         playersDeck[targetPlayer].append(cardChoice)
-    print(playersDeck)
 
 defineAllDeck()
