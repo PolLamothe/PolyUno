@@ -1,0 +1,47 @@
+<mxfile host="Electron" modified="2024-05-28T12:35:52.311Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/22.1.2 Chrome/114.0.5735.289 Electron/25.9.4 Safari/537.36" etag="udUUPUrSwWc6l8aIKDwU" version="22.1.2" type="device">
+  <diagram name="Page-1" id="2YBvvXClWsGukQMizWep">
+    <mxGraphModel dx="1434" dy="949" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="9W986Um2mgrycPuW5E_N-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;" parent="1" source="9W986Um2mgrycPuW5E_N-1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="215" y="788" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9W986Um2mgrycPuW5E_N-1" value="Joueur1" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="215" y="138" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9W986Um2mgrycPuW5E_N-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=1;exitDx=0;exitDy=0;" parent="1" source="9W986Um2mgrycPuW5E_N-2" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="515" y="788" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9W986Um2mgrycPuW5E_N-2" value="Joueur2" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="515" y="138" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="9W986Um2mgrycPuW5E_N-10" value="Le joueur se connecte et envoie un signal de connection" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="225" y="208" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="9W986Um2mgrycPuW5E_N-11" value="Le joueur se connecte et envoie un signal de connection" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="525" y="238" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="9W986Um2mgrycPuW5E_N-12" value="Le joueur reçoit le signal et est informé qu&#39;un second joueur est en ligne" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="225" y="278" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="9W986Um2mgrycPuW5E_N-14" value="" style="endArrow=open;endFill=1;endSize=12;html=1;rounded=0;" parent="1" edge="1">
+          <mxGeometry width="160" relative="1" as="geometry">
+            <mxPoint x="515" y="278" as="sourcePoint" />
+            <mxPoint x="405" y="278" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="H8a5xmAChwIYBJMTtfZJ-1" value="Le joueur envoie le signal qu&#39;il est prêt" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="225" y="358" width="180" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="H8a5xmAChwIYBJMTtfZJ-2" value="Le joueur envoie le signal qu&#39;il est prêt" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
+          <mxGeometry x="525" y="358" width="180" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
