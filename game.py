@@ -1,3 +1,4 @@
+import os
 from socket import *
 import threading
 from time import sleep
@@ -79,6 +80,8 @@ def listen():
     global playersOrder
     while True:
         data, address = s.recvfrom(2048)
+        if(str((address[0],address[1])) == str((myIPAddr,multicast_port_me))):
+            continue
         data = json.loads(data.decode())
         if(args.debug):
             print(data)
@@ -97,7 +100,6 @@ def listen():
             playersOrder.pop(0)
         if(data["api"] == "random card choice"):
             cardChoice = data["choice"]
-            print(cardChoice)
         if(data["api"] == "deck version"):
             otherPlayersDeckVersions[str((address[0],address[1]))] = data["deck"]
 
@@ -146,10 +148,13 @@ def pickARandomPlayer(definingDeck = False):
     playersOrder = sorted(allPlayersIp)
     while len(playersOrder) > 0:
         if(playersOrder.count((str((myIPAddr,multicast_port_me)))) > 0):
-            if(playersOrder[0] == str((myIPAddr,multicast_port_me))):
-                s.sendto(json.dumps({"api":"random player choice","choice":choice}).encode(),(multicast_group,multicast_port_other))
-                randomPlayerChoice[str((myIPAddr,multicast_port_me))] = choice
-                playersOrder.pop(0)
+            try:
+                if(playersOrder[0] == str((myIPAddr,multicast_port_me))):
+                    s.sendto(json.dumps({"api":"random player choice","choice":choice}).encode(),(multicast_group,multicast_port_other))
+                    playersOrder.pop(0)
+                    randomPlayerChoice[str((myIPAddr,multicast_port_me))] = choice
+            except:
+                continue
     result = get_all_values(randomPlayerChoice.copy())
     randomPlayerChoice = {}
     for player in result:
@@ -198,7 +203,6 @@ def defineAllDeck():
         allDecks.add(json.dumps(otherPlayersDeckVersions[player],sort_keys=True))
     if(len(allDecks) > 1):
         print("les decks ne sont pas synchronisés")
-        print(allDecks)
     else:
         print("les decks sont synchronisés")
 
