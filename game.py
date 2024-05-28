@@ -6,22 +6,6 @@ import argparse
 import random
 import json
 
-def get_all_values(d):
-    values = []
-    
-    def extract_values(obj):
-        if isinstance(obj, dict):
-            for value in obj.values():
-                extract_values(value)
-        elif isinstance(obj, list):
-            for item in obj:
-                extract_values(item)
-        else:
-            values.append(obj)
-    
-    extract_values(d)
-    return values
-
 def get_local_ip():
     # Créer un socket UDP
     s = socket(AF_INET, SOCK_DGRAM)
@@ -90,7 +74,11 @@ def listen():
             print(str((address[0],address[1])) + " is ready")
             readyPlayer.add((address[0],address[1]))
         if(data["api"] == "deck"):
-            playersDeck[data["data"]["player"]] = data["data"]["deck"]
+            index = playersOrder.index(data["data"]["player"])
+            if(index == 0):
+                index = len(playersOrder)-1
+            if(str((address[0],address[1])) == playersOrder[index]):
+                playersDeck[data["data"]["player"]] = data["data"]["deck"]
 
 def readyToPlay():
     readyPlayer.add(str((myIPAddr,multicast_port_me)))
@@ -113,11 +101,6 @@ waitingRoom()
 
 allCards = ["0","1","2","3","4","5","6","7","8","9","invert","+2","+4","colorChange","pass"]
 color = ["red","green","blue","yellow"]
-PlayersCard = {}
-
-for player in allPlayersIp:
-    PlayersCard[str(player)] = set()
-
 
 def createADeck():
     result = []
