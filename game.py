@@ -90,17 +90,13 @@ def readyToPlay():
         print("ready confirmation sent")
 
 def waitingRoom():
+    while(len(allPlayersIp) < 2):
+        continue
     input("Press enter when you want to start playing \n")
     readyToPlay()
     while len(allPlayersIp) != len(readyPlayer):
         continue
     print("everyone is ready")
-
-x = threading.Thread(target=listen)
-x.start()
-sleep(0.1)
-reportPresence()
-waitingRoom()
 
 allCards = ["0","1","2","3","4","5","6","7","8","9","invert","+2","+4","colorChange","pass"]
 color = ["red","green","blue","yellow"]
@@ -125,6 +121,12 @@ def defineOtherPlayerDeck():
     deck = createADeck()
     playersDeck[playersOrder[index]] = deck
     s.sendto(json.dumps({"api":"deck","data":{"player":playersOrder[index],"deck":deck}}).encode(),(multicast_group,multicast_port_other))
+
+x = threading.Thread(target=listen)
+x.start()
+sleep(0.1)
+reportPresence()
+waitingRoom()
 
 defineOtherPlayerDeck()
 while(len(playersDeck) != len(allPlayersIp)):
