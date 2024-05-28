@@ -76,6 +76,11 @@ def handle_api(data, addr):
             index -= 1
         if str((addr[0], addr[1])) == playersOrder[index]:
             playersDeck[data["data"]["player"]] = data["data"]["deck"]
+    elif data["api"] == "play":
+        if(str((addr[0],addr[1])) != playersOrder[currentPlayerIndex]):#if the player trying to play is not the good one
+            return
+        placeCard(str(addr),data["data"]["card"])
+        increasePlayerIndex()
 
 def listen():
     global otherPlayersDeckVersions
@@ -88,6 +93,8 @@ def listen():
         if(args.debug):
             print(data)
         if(str((address[0],address[1])) not in allPlayersIp):
+            if(readyState == True):
+                continue
             allPlayersIp.add(str((address[0],address[1])))
             console.print(str((address[0],address[1])) + " is here")
             reportPresence()
@@ -131,6 +138,33 @@ def defineOtherPlayerDeck():
     deck = createADeck()
     playersDeck[playersOrder[index]] = deck
     s.sendto(json.dumps({"api":"deck","data":{"player":playersOrder[index],"deck":deck}}).encode(),(multicast_group,multicast_port_other))
+    while(len(playersDeck) != len(allPlayersIp)):
+        continue
+
+def isGameFinished():
+    for player in playersDeck:
+        if(len(playersDeck[player]) == 0):
+            return True
+    return False
+
+def increasePlayerIndex():
+    global currentPlayerIndex
+    if(currentPlayerIndex != len(playersOrder)-1):
+        currentPlayerIndex += 1
+    else:
+        currentPlayerIndex = 0
+
+def placeCard(player,card):
+    list(playersDeck[player]).remove(card)
+    print(player + " à joué la carte "+card)
+
+def printPlayerDeck():
+    #TODO
+    print("veuillez choisir une carte \n")
+    for i in range(len(playersDeck[str((myIPAddr,multicast_port_me))])):
+        print(str(i+1)+". "+playersDeck[str((myIPAddr,multicast_port_me))][i])
+
+currentPlayerIndex = 0
 
 x = threading.Thread(target=listen)
 x.start()
@@ -139,6 +173,9 @@ reportPresence()
 waitingRoom()
 
 defineOtherPlayerDeck()
-while(len(playersDeck) != len(allPlayersIp)):
-    continue
-print(playersDeck)
+if(playersOrder[currentPlayerIndex] == str((myIPAddr,multicast_port_me))):
+    printPlayerDeck()
+    choice = playersDeck[playersOrder[currentPlayerIndex]][int(input(""))-1]
+    s.sendto(json.dumps({"api":"play","data":{"card":choice}}).encode(),(multicast_group,multicast_port_other))
+    placeCard(str((myIPAddr,multicast_port_me)),choice)
+    increasePlayerIndex()
