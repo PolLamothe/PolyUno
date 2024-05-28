@@ -68,15 +68,18 @@ def listen():
         if(str((address[0],address[1])) not in allPlayersIp):
             allPlayersIp.add(str((address[0],address[1])))
             print(str((address[0],address[1])) + " is here")
-            playersDeck[str((address[0],address[1]))] = []
             reportPresence()
         if(data["api"] == "i'm ready"):
             print(str((address[0],address[1])) + " is ready")
             readyPlayer.add((address[0],address[1]))
         if(data["api"] == "deck"):
+            while(len(playersOrder) == 0):
+                continue
             index = playersOrder.index(data["data"]["player"])
             if(index == 0):
                 index = len(playersOrder)-1
+            else:
+                index -= 1
             if(str((address[0],address[1])) == playersOrder[index]):
                 playersDeck[data["data"]["player"]] = data["data"]["deck"]
 
@@ -110,12 +113,15 @@ def createADeck():
 
 def defineOtherPlayerDeck():
     global playersOrder
+    global playersDeck
     playersOrder = sorted(list(allPlayersIp))
     index = playersOrder.index(str((myIPAddr,multicast_port_me)))
     if(index == len(allPlayersIp)-1):
         index = 0
     else:
         index += 1
+    if(args.debug):
+        print("je choisis le deck de : "+playersOrder[index])
     deck = createADeck()
     playersDeck[playersOrder[index]] = deck
     s.sendto(json.dumps({"api":"deck","data":{"player":playersOrder[index],"deck":deck}}).encode(),(multicast_group,multicast_port_other))
