@@ -60,6 +60,23 @@ def reportPresence():
     if(readyState):
         s.sendto(json.dumps({"api":"i'm ready"}).encode(),(multicast_group,multicast_port_other))
 
+
+def handle_api(data, addr):
+    # Handle API calls with data
+    if data["api"] == "i'm ready":
+        console.print(str((addr[0], addr[1])) + "[bold green] is ready")
+        readyPlayer.add((addr[0], addr[1]))
+    elif data["api"] == "deck":
+        while len(playersOrder) == 0:
+            continue
+        index = playersOrder.index(data["data"]["player"])
+        if index == 0:
+            index = len(playersOrder) - 1
+        else:
+            index -= 1
+        if str((addr[0], addr[1])) == playersOrder[index]:
+            playersDeck[data["data"]["player"]] = data["data"]["deck"]
+
 def listen():
     global otherPlayersDeckVersions
     global playersOrder
@@ -74,19 +91,7 @@ def listen():
             allPlayersIp.add(str((address[0],address[1])))
             console.print(str((address[0],address[1])) + " is here")
             reportPresence()
-        if(data["api"] == "i'm ready"):
-            console.print(str((address[0], address[1])) + "[bold green] is ready")
-            readyPlayer.add((address[0],address[1]))
-        if(data["api"] == "deck"):
-            while(len(playersOrder) == 0):
-                continue
-            index = playersOrder.index(data["data"]["player"])
-            if(index == 0):
-                index = len(playersOrder)-1
-            else:
-                index -= 1
-            if(str((address[0],address[1])) == playersOrder[index]):
-                playersDeck[data["data"]["player"]] = data["data"]["deck"]
+        handle_api(data, address)
 
 def readyToPlay():
     readyPlayer.add(str((myIPAddr,multicast_port_me)))
