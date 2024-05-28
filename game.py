@@ -5,6 +5,11 @@ from time import sleep
 import argparse
 import random
 import json
+from rich.console import Console
+from rich.markdown import Markdown
+
+# Init console for TUI
+console = Console()
 
 def get_local_ip():
     # Créer un socket UDP
@@ -19,7 +24,7 @@ def get_local_ip():
     return local_ip
 
 parser = argparse.ArgumentParser()
-#to debug start a instance with -debug-server True and another with -debug-client True
+# To debug start an instance with -debug-server True and another with -debug-client True
 parser.add_argument("-debug-server", dest="debug_server",action='store_true') 
 parser.add_argument("-debug-client", dest="debug_client",action='store_true')
 parser.add_argument("-debug",dest="debug",action='store_true')
@@ -67,10 +72,10 @@ def listen():
             print(data)
         if(str((address[0],address[1])) not in allPlayersIp):
             allPlayersIp.add(str((address[0],address[1])))
-            print(str((address[0],address[1])) + " is here")
+            console.print(str((address[0],address[1])) + " is here")
             reportPresence()
         if(data["api"] == "i'm ready"):
-            print(str((address[0],address[1])) + " is ready")
+            console.print(str((address[0], address[1])) + "[bold green] is ready")
             readyPlayer.add((address[0],address[1]))
         if(data["api"] == "deck"):
             while(len(playersOrder) == 0):
@@ -96,7 +101,7 @@ def waitingRoom():
     readyToPlay()
     while len(allPlayersIp) != len(readyPlayer):
         continue
-    print("everyone is ready")
+    console.print(Markdown("# Everyone is ready!"))
 
 allCards = ["0","1","2","3","4","5","6","7","8","9","invert","+2","+4","colorChange","pass"]
 color = ["red","green","blue","yellow"]
