@@ -79,6 +79,8 @@ def handle_api(data, addr):
     elif data["api"] == "play":
         if(str((addr[0],addr[1])) != playersOrder[currentPlayerIndex]):#if the player trying to play is not the good one
             return
+        if(playersDeck[str((addr[0],addr[1]))].count(data["data"]["card"]) == 0):
+            return
         placeCard(str(addr),data["data"]["card"])
         increasePlayerIndex()
 
@@ -155,7 +157,7 @@ def increasePlayerIndex():
         currentPlayerIndex = 0
 
 def placeCard(player,card):
-    list(playersDeck[player]).remove(card)
+    playersDeck[player].remove(card)
     print(player + " à joué la carte "+card)
 
 def printPlayerDeck():
@@ -172,6 +174,12 @@ def getPlayerCardChoice():
         choice = input("votre choix : ")
     return playersDeck[playersOrder[currentPlayerIndex]][int(choice)-1]
 
+def isGameOver():
+    for player in playersDeck:
+        if(len(playersDeck[player]) == 0):
+            return True
+    return False
+
 currentPlayerIndex = 0
 
 x = threading.Thread(target=listen)
@@ -181,8 +189,10 @@ reportPresence()
 waitingRoom()
 
 defineOtherPlayerDeck()
-if(playersOrder[currentPlayerIndex] == str((myIPAddr,multicast_port_me))):
-    choice = getPlayerCardChoice()
-    s.sendto(json.dumps({"api":"play","data":{"card":choice}}).encode(),(multicast_group,multicast_port_other))
-    placeCard(str((myIPAddr,multicast_port_me)),choice)
-    increasePlayerIndex()
+while not isGameOver():
+    if(playersOrder[currentPlayerIndex] == str((myIPAddr,multicast_port_me))):
+        choice = getPlayerCardChoice()
+        s.sendto(json.dumps({"api":"play","data":{"card":choice}}).encode(),(multicast_group,multicast_port_other))
+        placeCard(str((myIPAddr,multicast_port_me)),choice)
+        increasePlayerIndex()
+print("la partie est fini")
