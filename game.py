@@ -163,6 +163,14 @@ def printPlayerDeck():
     print("veuillez choisir une carte \n")
     for i in range(len(playersDeck[str((myIPAddr,multicast_port_me))])):
         print(str(i+1)+". "+playersDeck[str((myIPAddr,multicast_port_me))][i])
+    print("\n")
+
+def getPlayerCardChoice():
+    printPlayerDeck()
+    choice = input("votre choix : ")
+    while(int(choice) < 0 or int(choice) > len(playersDeck[playersOrder[currentPlayerIndex]])):
+        choice = input("votre choix : ")
+    return playersDeck[playersOrder[currentPlayerIndex]][int(choice)-1]
 
 currentPlayerIndex = 0
 
@@ -174,8 +182,7 @@ waitingRoom()
 
 defineOtherPlayerDeck()
 if(playersOrder[currentPlayerIndex] == str((myIPAddr,multicast_port_me))):
-    printPlayerDeck()
-    choice = playersDeck[playersOrder[currentPlayerIndex]][int(input(""))-1]
+    choice = getPlayerCardChoice()
     s.sendto(json.dumps({"api":"play","data":{"card":choice}}).encode(),(multicast_group,multicast_port_other))
     placeCard(str((myIPAddr,multicast_port_me)),choice)
     increasePlayerIndex()
