@@ -52,6 +52,7 @@ readyPlayer = set()
 readyState = False
 playersOrder = []
 playersDeck = {}
+currentCard = None
 
 def reportPresence():
     if(args.debug):
@@ -62,6 +63,7 @@ def reportPresence():
 
 
 def handle_api(data, addr):
+    global currentCard
     # Handle API calls with data
     if data["api"] == "i'm ready":
         console.print(str((addr[0], addr[1])) + "[bold green] is ready")
@@ -78,11 +80,19 @@ def handle_api(data, addr):
             playersDeck[data["data"]["player"]] = data["data"]["deck"]
     elif data["api"] == "play":
         if(str((addr[0],addr[1])) != playersOrder[currentPlayerIndex]):#if the player trying to play is not the good one
+            if(args.debug):
+                print("ce n'es pas le tour de ce joueur")
             return
-        if(playersDeck[str((addr[0],addr[1]))].count(data["data"]["card"]) == 0):
+        if(playersDeck[str((addr[0],addr[1]))].count(data["data"]["card"]) == 0):#if the player try to play a card he don't have
+            if(args.debug):
+                print("le joueur à essayé de jouer une carte qu'il n'a pas")
             return
         placeCard(str(addr),data["data"]["card"])
         increasePlayerIndex()
+    elif data["api"] == "firstCard":
+        if(str((addr[0],addr[1])) != playersOrder[len(playersOrder)-1]):#if the player trying to play is not the last player to play
+            return
+        currentCard = data["data"]
 
 def listen():
     global otherPlayersDeckVersions
@@ -123,7 +133,7 @@ color = ["red","green","blue","yellow"]
 def createADeck():
     result = []
     for i in range(8):
-        result.append(json.dumps({"card":random.choice(allCards),"color":random.choice(color)}))
+        result.append(getARandomCard())
     return result
 
 def defineOtherPlayerDeck():
@@ -157,21 +167,26 @@ def increasePlayerIndex():
         currentPlayerIndex = 0
 
 def placeCard(player,card):
+    global currentCard
     playersDeck[player].remove(card)
-    print(player + " à joué la carte "+card)
+    currentCard = card
+    print(player + " à joué la carte "+getStringFromCard(card))
 
-def printPlayerDeck():
-    #TODO
+def printPlayerDeck(placable=False):
     print("veuillez choisir une carte \n")
-    for i in range(len(playersDeck[str((myIPAddr,multicast_port_me))])):
-        print(str(i+1)+". "+playersDeck[str((myIPAddr,multicast_port_me))][i])
+    cards = playersDeck[str((myIPAddr,multicast_port_me))]
+    if(placable):
+        cards = getPlacableCard(cards)
+    for i in range(len(cards)):
+        print(str(i+1)+". "+getStringFromCard(cards[i]))
     print("\n")
 
 def getPlayerCardChoice():
-    printPlayerDeck()
+    printPlayerDeck(placable=True)
     choice = input("votre choix : ")
     while(int(choice) < 0 or int(choice) > len(playersDeck[playersOrder[currentPlayerIndex]])):
         choice = input("votre choix : ")
+    print("")
     return playersDeck[playersOrder[currentPlayerIndex]][int(choice)-1]
 
 def isGameOver():
@@ -179,6 +194,33 @@ def isGameOver():
         if(len(playersDeck[player]) == 0):
             return True
     return False
+
+def getStringFromCard(jsonCard):
+    #TODO
+    return str(jsonCard)
+
+def chooseFirstCard():
+    global currentCard
+    choice = getARandomCard()
+    s.sendto(json.dumps({"api":"firstCard","data":choice}).encode(),(multicast_group,multicast_port_other))
+    currentCard = choice
+
+def getPlacableCard(cards):
+    result = []
+    for card in cards:
+        if(card["color"] == "null"):
+            result.append(card)
+        elif(card["color"] == currentCard["color"]):
+            result.append(card)
+        elif(card["card"] == currentCard["card"]):
+            result.append(card)
+    return result
+
+def getARandomCard():
+    result = {"card":random.choice(allCards),"color":random.choice(color)}
+    if(result["card"] in ["colorChange","+4"]):
+        result["color"] = None
+    return result
 
 currentPlayerIndex = 0
 
@@ -189,6 +231,10 @@ reportPresence()
 waitingRoom()
 
 defineOtherPlayerDeck()
+if(str((myIPAddr,multicast_port_me)) == playersOrder[len(playersOrder)-1]):
+    chooseFirstCard()
+while(currentCard == None):
+    continue
 while not isGameOver():
     if(playersOrder[currentPlayerIndex] == str((myIPAddr,multicast_port_me))):
         choice = getPlayerCardChoice()
