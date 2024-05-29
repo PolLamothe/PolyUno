@@ -54,6 +54,7 @@ playersOrder = []
 playersDeck = {}
 currentCard = None
 playerThatShouldPioche = None
+malusPlayer = None
 
 def reportPresence():
     if(args.debug):
@@ -66,6 +67,7 @@ def reportPresence():
 def handle_api(data, addr):
     global currentCard
     global playerThatShouldPioche
+    global malusPlayer
     # Handle API calls with data
     if data["api"] == "i'm ready":
         console.print(str((addr[0], addr[1])) + "[bold green] is ready")
@@ -82,15 +84,13 @@ def handle_api(data, addr):
             playersDeck[data["data"]["player"]] = data["data"]["deck"]
     elif data["api"] == "play":
         if(str((addr[0],addr[1])) != playersOrder[currentPlayerIndex]):#if the player trying to play is not the good one
-            if(args.debug):
-                print("ce n'es pas le tour de ce joueur")
+            if(args.debug):print("ce n'es pas le tour de ce joueur")
             return
         if(playersDeck[str((addr[0],addr[1]))].count(data["data"]["card"]) == 0):#if the player try to play a card he don't have
-            if(args.debug):
-                print("le joueur à essayé de jouer une carte qu'il n'a pas")
+            if(args.debug):print("le joueur à essayé de jouer une carte qu'il n'a pas")
             return
-        placeCard(str(addr),data["data"]["card"])
-        increasePlayerIndex()
+        Y = threading.Thread(target=placeCard,args=[str(addr),data["data"]["card"]])
+        Y.start()
     elif data["api"] == "firstCard":
         if(str((addr[0],addr[1])) != playersOrder[len(playersOrder)-1]):#if the player trying to play is not the last player to play
             return
@@ -100,12 +100,7 @@ def handle_api(data, addr):
             if(args.debug):print("un joueur a essayer de piocher alors qu'il pouvait jouer")
             return
         playerThatShouldPioche = str((addr[0],addr[1]))
-        otherPlayerIndex = playersOrder.index(str((addr[0],addr[1])))
-        myIndex = playersOrder.index(str((myIPAddr,multicast_port_me)))
-        otherPlayerIndex += 1
-        if(otherPlayerIndex >= len(playersOrder)):
-            otherPlayerIndex = 0
-        if(otherPlayerIndex == myIndex):#if i'm the player that have to choose the card
+        if(amIThePlayerThatChooseCard(playerThatShouldPioche)):#if i'm the player that have to choose the card
             choice = getARandomCard()
             s.sendto(json.dumps({"api":"givePioche","card":choice}).encode(),(multicast_group,multicast_port_other))
             pioche(str((addr[0],addr[1])),choice)
@@ -123,8 +118,30 @@ def handle_api(data, addr):
             if(args.debug):print("le joueur qui a essayer de fournir la carte piochée n'est pas le bon")
             return
         pioche(str((addr[0],addr[1])),data["card"])
-        
-
+    elif data["api"] == "askMalus":
+        if(currentCard["card"] not in ["+2","+4"]):#if no one need to draw
+            if(args.debug):print("personne n'a de malus")
+            return
+        if(malusPlayer != str((addr[0],addr[1]))):#if the player asking the malus is not the good one
+            if(args.debug):print("le joueur qui demande un malus n'est pas le bon")
+            return
+        if(amIThePlayerThatChooseCard(str((addr[0],addr[1])))):
+            if(args.debug):print("i have to choose the malus")
+            result = []
+            for i in range(int(data["cardsNumber"])):
+                result.append(getARandomCard())
+            s.sendto(json.dumps({"api":"giveMalus","cards":result}).encode(),(multicast_group,multicast_port_other))
+            malusPioche(str((addr[0],addr[1])),result)
+    elif data["api"] == "giveMalus":
+        otherPlayerIndex = playersOrder.index(malusPlayer)
+        playerIndex = playersOrder.index(str((addr[0],addr[1])))
+        otherPlayerIndex += 1
+        if(otherPlayerIndex >= len(playersOrder)):
+            otherPlayerIndex = 0
+        if(playerIndex != otherPlayerIndex):#if the player trying to give the card is not the good one
+            if(args.debug):print("le joueur qui a essayer de fournir les cartes malus n'est pas le bon")
+            return
+        malusPioche(malusPlayer,data["cards"])
 def listen():
     global otherPlayersDeckVersions
     global playersOrder
@@ -199,9 +216,23 @@ def increasePlayerIndex():
 
 def placeCard(player,card):
     global currentCard
+    global malusPlayer
     playersDeck[player].remove(card)
     currentCard = card
-    print(player + " à joué la carte "+getStringFromCard(card))
+    print(player + " à joué la carte "+getStringFromCard(card)+"\n")
+    if(card["card"] == "pass"):
+        increasePlayerIndex()
+    if(card["card"] == "+2"):
+        placerIndex = playersOrder.index(player)
+        otherPlayerIndex = placerIndex+1
+        if(otherPlayerIndex >= len(playersOrder)):
+            otherPlayerIndex = 0
+        malusPlayer =  playersOrder[otherPlayerIndex]
+        if(str((myIPAddr,multicast_port_me)) == malusPlayer):#if i'm the player that take the malus
+            s.sendto(json.dumps({"api":"askMalus","cardsNumber":"2"}).encode(),(multicast_group,multicast_port_other))
+        while malusPlayer != None:
+            continue
+    increasePlayerIndex()
 
 def printPlayerDeck(placable=False):
     print("veuillez choisir une carte \n")
@@ -272,8 +303,28 @@ def pioche(player,card):
         print("vous avez pioché la carte : "+getStringFromCard(card))
     else:
         print(player+" à pioché")
+    print("")
     playerThatShouldPioche = None
     increasePlayerIndex()
+
+def malusPioche(player,cards):
+    global malusPlayer
+    for card in cards:
+        playersDeck[player].append(card)
+        if(player == str((myIPAddr,multicast_port_me))):
+            print("vous avez pioché "+getStringFromCard(card))
+        else:
+            print(player+" a pioché une carte")
+    print("")
+    malusPlayer = None
+
+def amIThePlayerThatChooseCard(otherPlayer):
+    otherPlayerIndex = playersOrder.index(otherPlayer)
+    myIndex = playersOrder.index(str((myIPAddr,multicast_port_me)))
+    otherPlayerIndex += 1
+    if(otherPlayerIndex >= len(playersOrder)):
+        otherPlayerIndex = 0
+    return myIndex == otherPlayerIndex
 
 currentPlayerIndex = 0
 
@@ -294,5 +345,4 @@ while not isGameOver():
         if(choice != None):
             s.sendto(json.dumps({"api":"play","data":{"card":choice}}).encode(),(multicast_group,multicast_port_other))
             placeCard(str((myIPAddr,multicast_port_me)),choice)
-            increasePlayerIndex()
 print("la partie est fini")
