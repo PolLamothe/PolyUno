@@ -108,14 +108,11 @@ def handle_api(data, addr):
         if(otherPlayerIndex == myIndex):#if i'm the player that have to choose the card
             choice = getARandomCard()
             s.sendto(json.dumps({"api":"givePioche","card":choice}).encode(),(multicast_group,multicast_port_other))
-            playersDeck[str((addr[0],addr[1]))].append(choice)
-            print(str((addr[0],addr[1]))+" à pioché")
-            increasePlayerIndex()
+            pioche(str((addr[0],addr[1])),choice)
         else:
             print("")
     elif data["api"] == "givePioche":
         while(playerThatShouldPioche == None):
-            print("a")
             continue
         otherPlayerIndex = playersOrder.index(playerThatShouldPioche)
         playerIndex = playersOrder.index(str((addr[0],addr[1])))
@@ -125,13 +122,8 @@ def handle_api(data, addr):
         if(playerIndex != otherPlayerIndex):#if the player trying to give the card is not the good one
             if(args.debug):print("le joueur qui a essayer de fournir la carte piochée n'est pas le bon")
             return
-        playersDeck[playerThatShouldPioche].append(data["card"])
-        if(playerThatShouldPioche == str((myIPAddr,multicast_port_me))):
-            print("vous avez pioché la carte : "+getStringFromCard(data["card"]))
-        else:
-            print(str((addr[0],addr[1]))+" à pioché")
-        increasePlayerIndex()
-        playerThatShouldPioche = None
+        pioche(str((addr[0],addr[1])),data["card"])
+        
 
 def listen():
     global otherPlayersDeckVersions
@@ -231,8 +223,10 @@ def getPlayerCardChoice():
         return getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice)-1]
     else:
         print("vous ne pouvez poser aucune carte, vous devez donc piocher")
-        s.sendto(json.dumps({"api":"askPioche"}).encode(),(multicast_group,multicast_port_other))
         playerThatShouldPioche = str((myIPAddr,multicast_port_me))
+        s.sendto(json.dumps({"api":"askPioche"}).encode(),(multicast_group,multicast_port_other))
+        while playerThatShouldPioche != None:
+            continue
         return None
 
 def isGameOver():
@@ -271,6 +265,16 @@ def getARandomCard():
 def canPlayerPlay(player):
     return len(getPlacableCard(playersDeck[player])) > 0
 
+def pioche(player,card):
+    global playerThatShouldPioche
+    playersDeck[playerThatShouldPioche].append(card)
+    if(playerThatShouldPioche == str((myIPAddr,multicast_port_me))):
+        print("vous avez pioché la carte : "+getStringFromCard(card))
+    else:
+        print(player+" à pioché")
+    playerThatShouldPioche = None
+    increasePlayerIndex()
+
 currentPlayerIndex = 0
 
 x = threading.Thread(target=listen)
@@ -290,5 +294,5 @@ while not isGameOver():
         if(choice != None):
             s.sendto(json.dumps({"api":"play","data":{"card":choice}}).encode(),(multicast_group,multicast_port_other))
             placeCard(str((myIPAddr,multicast_port_me)),choice)
-        increasePlayerIndex()
+            increasePlayerIndex()
 print("la partie est fini")
