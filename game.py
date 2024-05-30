@@ -273,7 +273,10 @@ def placeCard(player,card):
     increasePlayerIndex()
 
 def printPlayerDeck(placable=False):
-    print("veuillez choisir une carte \n")
+    print("voici toute vos cartes : \n")
+    for card in playersDeck[str((myIPAddr,multicast_port_me))]:
+        print(getStringFromCard(card))
+    print("\nveuillez choisir une carte \n")
     cards = playersDeck[str((myIPAddr,multicast_port_me))]
     if(placable):
         cards = getPlacableCard(cards)
