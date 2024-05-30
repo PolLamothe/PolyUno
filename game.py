@@ -55,6 +55,7 @@ playersDeck = {}
 currentCard = None
 playerThatShouldPioche = None
 malusPlayer = None
+oneCardPlayer = False
 playersPseudo = {}
 
 def reportPresence():
@@ -69,6 +70,7 @@ def handle_api(data, addr):
     global currentCard
     global playerThatShouldPioche
     global malusPlayer
+    global oneCardPlayer
     # Handle API calls with data
     if(data["api"] == "i'm here"):
         allPseudo = []
@@ -137,7 +139,7 @@ def handle_api(data, addr):
             return
         pioche(str((addr[0],addr[1])),data["card"])
     elif data["api"] == "askMalus":
-        if(currentCard["card"] not in ["+2","+4"]):#if no one need to draw
+        if(malusPlayer == None):#if no one need to draw
             if(args.debug):print("personne n'a de malus")
             return
         if(malusPlayer != str((addr[0],addr[1]))):#if the player asking the malus is not the good one
@@ -160,6 +162,22 @@ def handle_api(data, addr):
             if(args.debug):print("le joueur qui a essayer de fournir les cartes malus n'est pas le bon")
             return
         malusPioche(malusPlayer,data["cards"])
+    elif data["api"] == "contreUno":
+        if(not oneCardPlayer):
+            return
+        if(data["data"] == "uno" and str((addr[0],addr[1])) == playersOrder[currentPlayerIndex]):
+            oneCardPlayer = False
+            print(getPseudo(str((addr[0],addr[1])))+" a dit uno ! (appuyez sur une entrée)")
+            return
+        elif(data["data"] == "contre uno" and str((addr[0],addr[1])) != playersOrder[currentPlayerIndex]):#if the player who counter is not the one who have only one card
+            malusPlayer =  playersOrder[currentPlayerIndex]
+            oneCardPlayer = False
+            print(getPseudo(str((addr[0],addr[1])))+" a dit contre uno ! (appuyez sur une entrée)")
+            if(str((myIPAddr,multicast_port_me)) == playersOrder[currentPlayerIndex]):#if i'm the player that have to draw
+                s.sendto(json.dumps({"api":"askMalus","cardsNumber":"2"}).encode(),(multicast_group,multicast_port_other))
+        else:
+            if(args.debug):print("mauvais contreUno")
+                
 
 def listen():
     global otherPlayersDeckVersions
@@ -198,7 +216,7 @@ color = ["red","green","blue","yellow"]
 
 def createADeck():
     result = []
-    for i in range(8):
+    for i in range(2):
         result.append(getARandomCard())
     return result
 
@@ -237,6 +255,7 @@ def placeCard(player,card):
     global malusPlayer
     global playersOrder
     global currentPlayerIndex
+    global oneCardPlayer
     if(card["card"] in ["colorChange","+4"]):
         cardCopy = card.copy()
         cardCopy["color"] = None
@@ -270,6 +289,21 @@ def placeCard(player,card):
     if(card["card"] == "invert"):
         reversed(playersOrder)
         currentPlayerIndex = len(playersOrder)-currentPlayerIndex-1
+    if(len(playersDeck[playersOrder[currentPlayerIndex]]) == 1):
+        oneCardPlayer = True
+        print(getPseudo(playersOrder[currentPlayerIndex])+" n'a plus que 1 carte \n")
+        while(oneCardPlayer):
+            choice = input("Qu'avez vous à lui dire : ")
+            if(choice == "uno" and str((myIPAddr,multicast_port_me)) == playersOrder[currentPlayerIndex]):
+                oneCardPlayer = False
+                s.sendto(json.dumps({"api":"contreUno","data":choice}).encode(),(multicast_group,multicast_port_other))
+                continue
+            elif(choice == "contre uno" and str((myIPAddr,multicast_port_me)) != playersOrder[currentPlayerIndex]):#if the player who counter is not the one who have only one card
+                malusPlayer =  playersOrder[currentPlayerIndex]
+                oneCardPlayer = False
+                s.sendto(json.dumps({"api":"contreUno","data":choice}).encode(),(multicast_group,multicast_port_other))
+        while(malusPlayer != None):
+            continue
     increasePlayerIndex()
 
 def printPlayerDeck(placable=False):
