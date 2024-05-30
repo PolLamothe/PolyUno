@@ -224,6 +224,8 @@ def increasePlayerIndex():
 def placeCard(player,card):
     global currentCard
     global malusPlayer
+    global playersOrder
+    global currentPlayerIndex
     if(card["card"] in ["colorChange","+4"]):
         cardCopy = card.copy()
         cardCopy["color"] = None
@@ -254,6 +256,9 @@ def placeCard(player,card):
             s.sendto(json.dumps({"api":"askMalus","cardsNumber":"4"}).encode(),(multicast_group,multicast_port_other))
         while malusPlayer != None:
             continue
+    if(card["card"] == "invert"):
+        reversed(playersOrder)
+        currentPlayerIndex = len(playersOrder)-currentPlayerIndex-1
     increasePlayerIndex()
 
 def printPlayerDeck(placable=False):
