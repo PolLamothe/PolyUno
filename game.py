@@ -55,11 +55,12 @@ playersDeck = {}
 currentCard = None
 playerThatShouldPioche = None
 malusPlayer = None
+playersPseudo = {}
 
 def reportPresence():
     if(args.debug):
         print("sending presence")
-    s.sendto(json.dumps({"api":"i'm here"}).encode(),(multicast_group,multicast_port_other))
+    s.sendto(json.dumps({"api":"i'm here","data":playersPseudo[str((myIPAddr,multicast_port_me))]}).encode(),(multicast_group,multicast_port_other))
     if(readyState):
         s.sendto(json.dumps({"api":"i'm ready"}).encode(),(multicast_group,multicast_port_other))
 
@@ -69,8 +70,18 @@ def handle_api(data, addr):
     global playerThatShouldPioche
     global malusPlayer
     # Handle API calls with data
-    if data["api"] == "i'm ready":
-        console.print(str((addr[0], addr[1])) + "[bold green] is ready")
+    if(data["api"] == "i'm here"):
+        allPseudo = []
+        for pseudo in playersPseudo:
+            allPseudo.append(playersPseudo[pseudo])
+        if(data["data"] in allPseudo):
+            return
+        if(str((addr[0],addr[1])) in playersPseudo):
+            return
+        playersPseudo[str((addr[0],addr[1]))] = data["data"]
+        console.print(getPseudo(str((addr[0],addr[1]))) + " is here")
+    elif data["api"] == "i'm ready":
+        console.print(getPseudo(str((addr[0], addr[1]))) + "[bold green] is ready")
         readyPlayer.add((addr[0], addr[1]))
     elif data["api"] == "deck":
         while len(playersOrder) == 0:
@@ -149,6 +160,7 @@ def handle_api(data, addr):
             if(args.debug):print("le joueur qui a essayer de fournir les cartes malus n'est pas le bon")
             return
         malusPioche(malusPlayer,data["cards"])
+
 def listen():
     global otherPlayersDeckVersions
     global playersOrder
@@ -163,7 +175,6 @@ def listen():
             if(readyState == True):
                 continue
             allPlayersIp.add(str((address[0],address[1])))
-            console.print(str((address[0],address[1])) + " is here")
             reportPresence()
         handle_api(data, address)
 
@@ -233,7 +244,7 @@ def placeCard(player,card):
     else:
         playersDeck[player].remove(card)
     currentCard = card
-    print(player + " à joué la carte "+getStringFromCard(card)+"\n")
+    print(getPseudo(player) + " à joué la carte "+getStringFromCard(card)+"\n")
     if(card["card"] == "pass"):
         increasePlayerIndex()
     if(card["card"] == "+2"):
@@ -339,7 +350,7 @@ def pioche(player,card):
     if(playerThatShouldPioche == str((myIPAddr,multicast_port_me))):
         print("vous avez pioché la carte : "+getStringFromCard(card))
     else:
-        print(player+" à pioché")
+        print(getPseudo(player)+" à pioché")
     print("")
     playerThatShouldPioche = None
     increasePlayerIndex()
@@ -351,7 +362,7 @@ def malusPioche(player,cards):
         if(player == str((myIPAddr,multicast_port_me))):
             print("vous avez pioché "+getStringFromCard(card))
         else:
-            print(player+" a pioché une carte")
+            print(getPseudo(player)+" a pioché une carte")
     print("")
     malusPlayer = None
 
@@ -363,8 +374,22 @@ def amIThePlayerThatChooseCard(otherPlayer):
         otherPlayerIndex = 0
     return myIndex == otherPlayerIndex
 
+def askPseudo():
+    choice = input("Veuillez entrer votre pseudo : ")
+    allPseudo = []
+    for pseudo in playersPseudo:
+        allPseudo.append(playersPseudo[pseudo])
+    while(choice == "" or choice in allPseudo):
+        choice = input("Veuillez entrer votre pseudo : ")
+    s.sendto(json.dumps({"api":"pseudo","data":choice}).encode(),(multicast_group,multicast_port_other))
+    playersPseudo[str((myIPAddr,multicast_port_me))] = choice
+
+def getPseudo(addr):
+    return playersPseudo[addr]
+
 currentPlayerIndex = 0
 
+askPseudo()
 x = threading.Thread(target=listen)
 x.start()
 sleep(0.1)
