@@ -216,7 +216,7 @@ color = ["red","green","blue","yellow"]
 
 def createADeck():
     result = []
-    for i in range(2):
+    for i in range(8):
         result.append(getARandomCard())
     return result
 
