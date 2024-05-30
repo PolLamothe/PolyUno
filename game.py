@@ -87,8 +87,15 @@ def handle_api(data, addr):
             if(args.debug):print("ce n'es pas le tour de ce joueur")
             return
         if(playersDeck[str((addr[0],addr[1]))].count(data["data"]["card"]) == 0):#if the player try to play a card he don't have
-            if(args.debug):print("le joueur à essayé de jouer une carte qu'il n'a pas")
-            return
+            if(data["data"]["card"]["card"] in ["colorChange","+4"]):
+                cardCopy = data["data"]["card"].copy()
+                cardCopy["color"] = None
+                if(playersDeck[str((addr[0],addr[1]))].count(cardCopy) == 0):
+                    if(args.debug):print("le joueur à essayé de jouer une carte qu'il n'a pas")
+                    return
+            else : 
+                if(args.debug):print("le joueur à essayé de jouer une carte qu'il n'a pas")
+                return
         Y = threading.Thread(target=placeCard,args=[str(addr),data["data"]["card"]])
         Y.start()
     elif data["api"] == "firstCard":
@@ -217,7 +224,12 @@ def increasePlayerIndex():
 def placeCard(player,card):
     global currentCard
     global malusPlayer
-    playersDeck[player].remove(card)
+    if(card["card"] in ["colorChange","+4"]):
+        cardCopy = card.copy()
+        cardCopy["color"] = None
+        playersDeck[player].remove(cardCopy)
+    else:
+        playersDeck[player].remove(card)
     currentCard = card
     print(player + " à joué la carte "+getStringFromCard(card)+"\n")
     if(card["card"] == "pass"):
@@ -230,6 +242,16 @@ def placeCard(player,card):
         malusPlayer =  playersOrder[otherPlayerIndex]
         if(str((myIPAddr,multicast_port_me)) == malusPlayer):#if i'm the player that take the malus
             s.sendto(json.dumps({"api":"askMalus","cardsNumber":"2"}).encode(),(multicast_group,multicast_port_other))
+        while malusPlayer != None:
+            continue
+    if(card["card"] == "+4"):
+        placerIndex = playersOrder.index(player)
+        otherPlayerIndex = placerIndex+1
+        if(otherPlayerIndex >= len(playersOrder)):
+            otherPlayerIndex = 0
+        malusPlayer =  playersOrder[otherPlayerIndex]
+        if(str((myIPAddr,multicast_port_me)) == malusPlayer):#if i'm the player that take the malus
+            s.sendto(json.dumps({"api":"askMalus","cardsNumber":"4"}).encode(),(multicast_group,multicast_port_other))
         while malusPlayer != None:
             continue
     increasePlayerIndex()
@@ -251,7 +273,16 @@ def getPlayerCardChoice():
         while(int(choice) < 0 or int(choice) > len(getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]]))):
             choice = input("votre choix : ")
         print("")
-        return getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice)-1]
+        card = getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice)-1].copy()
+        if(getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice)-1]["color"] == None):
+            print("vous devez choisir la couleur \n")
+            for i in range(len(color)):
+                print(str(i+1)+". "+color[i])
+            colorChoice = input("\nvotre choix : ")
+            while(int(colorChoice) < 0 or int(colorChoice) > len(color)):
+                colorChoice = input("\nvotre choix : ")
+            card["color"] = color[int(colorChoice)-1]
+        return card
     else:
         print("vous ne pouvez poser aucune carte, vous devez donc piocher")
         playerThatShouldPioche = str((myIPAddr,multicast_port_me))
@@ -279,7 +310,7 @@ def chooseFirstCard():
 def getPlacableCard(cards):
     result = []
     for card in cards:
-        if(card["color"] == "null"):
+        if(str(card["color"]) == "None"):
             result.append(card)
         elif(card["color"] == currentCard["color"]):
             result.append(card)
