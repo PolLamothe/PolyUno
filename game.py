@@ -298,8 +298,9 @@ def isGameOver():
     return False
 
 def getStringFromCard(jsonCard):
-    #TODO
-    return str(jsonCard)
+    if(jsonCard["color"] != None):
+        return jsonCard["card"]+" de couleur "+jsonCard["color"]
+    return jsonCard["card"]
 
 def chooseFirstCard():
     global currentCard
