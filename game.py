@@ -5,9 +5,12 @@ from time import sleep
 import argparse
 import random
 import json
+
+from pynput import keyboard
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.table import Table
+from pynput.keyboard import Key, Listener
 
 # Init console for TUI
 console = Console()
@@ -82,9 +85,9 @@ def handle_api(data, addr):
         if(str((addr[0],addr[1])) in playersPseudo):
             return
         playersPseudo[str((addr[0],addr[1]))] = data["data"]
-        console.print(getPseudo(str((addr[0],addr[1]))) + " is here")
+        console.print(" 👋 " + getPseudo(str((addr[0],addr[1]))) + " is here")
     elif data["api"] == "i'm ready":
-        console.print(getPseudo(str((addr[0], addr[1]))) + "[bold green] is ready")
+        console.print("[bold green] ✅ " + getPseudo(str((addr[0], addr[1]))) + " is ready !")
         readyPlayer.add((addr[0], addr[1]))
     elif data["api"] == "deck":
         while len(playersOrder) == 0:
@@ -198,15 +201,21 @@ def listen():
         handle_api(data, address)
 
 def readyToPlay():
+    console.print("[bold green] ✅ You're ready to play")
     readyPlayer.add(str((myIPAddr,multicast_port_me)))
     s.sendto(json.dumps({"api":"i'm ready"}).encode(),(multicast_group,multicast_port_other))
     if(args.debug):
         print("ready confirmation sent")
 
+
 def waitingRoom():
-    while(len(allPlayersIp) < 2):
-        continue
-    input("Press enter when you want to start playing \n")
+    console.clear()
+    with console.status("[bold green]Waiting one player...") as status:
+        while len(allPlayersIp) < 2:
+            continue
+    console.clear()
+    console.print("[bold blue]\n--- Press enter when you want to start playing ---\n")
+    input()
     readyToPlay()
     while len(allPlayersIp) != len(readyPlayer):
         continue
