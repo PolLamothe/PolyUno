@@ -7,6 +7,7 @@ import random
 import json
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.table import Table
 
 # Init console for TUI
 console = Console()
@@ -414,12 +415,25 @@ def amIThePlayerThatChooseCard(otherPlayer):
     return myIndex == otherPlayerIndex
 
 def askPseudo():
-    choice = input("Veuillez entrer votre pseudo : ")
+    # UI
+    def ui(error):
+        console.clear()
+        console.print(
+            "[red]  _____      _       _    _             \n |  __ \    | |     | |  | |            \n | |__) |__ | |_   _| |  | |_ __   ___  \n |  ___/ _ \| | | | | |  | | '_ \ / _ \ \n | |  | (_) | | |_| | |__| | | | | (_) |\n |_|   \___/|_|\__, |\____/|_| |_|\___/ \n                __/ |                   \n               |___/                    ")
+        console.print("\n\n")
+        if error is True:
+            console.print("[red]Error")
+            console.print("\n")
+        console.print("[bold]Veuillez entrer votre pseudo : [/bold]")
+        c = input(">> ")
+        return c
+
+    choice = ui(False)
     allPseudo = []
     for pseudo in playersPseudo:
         allPseudo.append(playersPseudo[pseudo])
-    while(choice == "" or choice in allPseudo):
-        choice = input("Veuillez entrer votre pseudo : ")
+    while choice == "" or choice in allPseudo:
+        choice = ui(True)
     s.sendto(json.dumps({"api":"pseudo","data":choice}).encode(),(multicast_group,multicast_port_other))
     playersPseudo[str((myIPAddr,multicast_port_me))] = choice
 
