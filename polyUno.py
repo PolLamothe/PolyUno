@@ -48,6 +48,11 @@ class PolyUno(App):
     def on_name_screen_changed(self, message: NameScreen.Changed) -> None:
         self.show_waiting_screen()
 
+    def on_network(self, message: Network) -> None:
+        screen = self.query_one("#screen", Vertical)
+        w = screen.get_child_by_type(WaitingRoom)
+        w.refresh_table()
+
 # ----------
 # Start game
 # ----------

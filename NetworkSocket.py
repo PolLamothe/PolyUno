@@ -48,6 +48,7 @@ class NetworkSocket:
                 continue
             if str((address[0], address[1])) not in self.allPlayersIp and self.discover_player:
                 self.allPlayersIp.add(str((address[0], address[1])))
+                self.playersPseudo[str((address[0], address[1]))] = data["data"]
                 event(address, data)
                 self.report_presence()
             self.handle_api(data, address)

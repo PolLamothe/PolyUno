@@ -26,7 +26,7 @@ class WaitingRoom(Container):
         self.table.add_columns("Name", "IP", "Ready")
         self.table.add_rows(self.players)
 
-    def on_network(self, message: Network) -> None:
+    def refresh_table(self) -> None:
         self.players = self.game.get_all_players()
         self.table.clear()
         for row in self.players:
