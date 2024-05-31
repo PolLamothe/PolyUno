@@ -318,22 +318,24 @@ def printPlayerDeck(placable=False):
         print(str(i+1)+". "+getStringFromCard(cards[i]))
     print("\n")
 
+def getPlayerInput(max):
+    choice = input("votre choix : ")
+    if(not choice.isnumeric()):return getPlayerInput(max)
+    if(int(choice) <= 0 or int(choice) > max):return getPlayerInput(max)
+    return choice
+
 def getPlayerCardChoice():
     global playerThatShouldPioche
     if(canPlayerPlay(playersOrder[currentPlayerIndex])):
         printPlayerDeck(placable=True)
-        choice = input("votre choix : ")
-        while(int(choice) < 0 or int(choice) > len(getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]]))):
-            choice = input("votre choix : ")
+        choice = getPlayerInput(len(getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])))
         print("")
         card = getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice)-1].copy()
         if(getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice)-1]["color"] == None):
             print("vous devez choisir la couleur \n")
             for i in range(len(color)):
                 print(str(i+1)+". "+color[i])
-            colorChoice = input("\nvotre choix : ")
-            while(int(colorChoice) < 0 or int(colorChoice) > len(color)):
-                colorChoice = input("\nvotre choix : ")
+            colorChoice = getPlayerInput(len(color))
             card["color"] = color[int(colorChoice)-1]
         return card
     else:
