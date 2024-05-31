@@ -2,11 +2,21 @@ from textual import events
 from textual.app import ComposeResult
 from textual.containers import Container, Vertical, Horizontal, Center
 from textual.css.query import QueryError
+from textual.message import Message
 from textual.screen import Screen
 from textual.widgets import Label, Input, Button
 
 
 class NameScreen(Container):
+    class Changed(Message):
+        def __init__(self, name: str) -> None:
+            self.name = name
+            super().__init__()
+
+    def __init__(self, game):
+        super().__init__()
+        self.game = game
+
     def compose(self) -> ComposeResult:
         yield Vertical(
             Label("  _____      _       _    _             \n |  __ \    | |     | |  | |            \n | |__) |__ | |_   _| |  | |_ __   ___  \n |  ___/ _ \| | | | | |  | | '_ \ / _ \ \n | |  | (_) | | |_| | |__| | | | | (_) |\n |_|   \___/|_|\__, |\____/|_| |_|\___/ \n                __/ |                   \n               |___/                    ", classes="name-title"),
@@ -28,5 +38,7 @@ class NameScreen(Container):
             # Validate the input
             if not name.strip():
                 self.app.notify("Your name cannot be empty !", title="Error :", severity="error")
+            elif not self.game.set_pseudo(name):
+                self.app.notify("Your name has already been taken", title="Error :", severity="error")
             else:
-                self.app.show_new_content(name)
+                self.post_message(self.Changed(name))
