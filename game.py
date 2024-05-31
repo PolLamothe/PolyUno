@@ -190,7 +190,7 @@ def listen():
         if(args.debug):
             print(data)
         if(str((address[0],address[1])) not in allPlayersIp):
-            if(readyState == True):
+            if(len(allPlayersIp) == len(readyPlayer)):
                 continue
             allPlayersIp.add(str((address[0],address[1])))
             reportPresence()
