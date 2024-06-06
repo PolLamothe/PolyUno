@@ -8,9 +8,10 @@ import json
 
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.text import Text
 
 # Init console for TUI
-console = Console()
+console = Console(highlight=False)
 
 
 def get_local_ip():
@@ -123,9 +124,11 @@ def handle_api(data, addr):
             # if the player trying to play is not the last player to play
             return
         currentCard = data["data"]
+        console.print("\n[bold] ➡️ The last card played is: [/bold]", getStringFromCard(currentCard), "\n")
     elif data["api"] == "askPioche":
         if canPlayerPlay(str((addr[0], addr[1]))):
-            if args.debug: print("un joueur a essayer de piocher alors qu'il pouvait jouer")
+            if args.debug:
+                print("un joueur a essayer de piocher alors qu'il pouvait jouer")
             return
         playerThatShouldPioche = str((addr[0], addr[1]))
         if amIThePlayerThatChooseCard(playerThatShouldPioche):  # if i'm the player that have to choose the card
@@ -178,13 +181,13 @@ def handle_api(data, addr):
             return
         if data["data"] == "uno" and str((addr[0], addr[1])) == playersOrder[currentPlayerIndex]:
             oneCardPlayer = False
-            print(getPseudo(str((addr[0], addr[1]))) + " a dit uno ! (appuyez sur une entrée)")
+            console.print("[italic] " + getPseudo(str((addr[0], addr[1]))) + "[/italic] said UNO! (press enter)")
             return
         elif (data["data"] == "contre uno" and str((addr[0], addr[1])) != playersOrder[
             currentPlayerIndex]):  # if the player who counter is not the one who have only one card
             malusPlayer = playersOrder[currentPlayerIndex]
             oneCardPlayer = False
-            print(getPseudo(str((addr[0], addr[1]))) + " a dit contre uno ! (appuyez sur une entrée)")
+            console.print("[italic] " + getPseudo(str((addr[0], addr[1]))) + "[/italic] said 'contre' UNO! (press enter)")
             if (str((myIPAddr, multicast_port_me)) == playersOrder[
                 currentPlayerIndex]):  # if i'm the player that have to draw
                 s.sendto(json.dumps({"api": "askMalus", "cardsNumber": "2"}).encode(),
@@ -230,6 +233,7 @@ def waitingRoom():
     while len(allPlayersIp) != len(readyPlayer):
         continue
     console.print(Markdown("# Everyone ready, game on!"))
+    console.clear()
 
 
 allCards = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "invert", "+2", "+4", "colorChange", "pass"]
@@ -290,7 +294,7 @@ def placeCard(player, card):
     else:
         playersDeck[player].remove(card)
     currentCard = card
-    print(getPseudo(player) + " à joué la carte " + getStringFromCard(card) + "\n")
+    console.print("[italic] " + getPseudo(player) + "[/italic] played the card " + getStringFromCard(card) + "\n")
     if card["card"] == "pass":
         increasePlayerIndex()
     if card["card"] == "+2":
@@ -320,9 +324,10 @@ def placeCard(player, card):
         currentPlayerIndex = len(playersOrder) - currentPlayerIndex - 1
     if len(playersDeck[playersOrder[currentPlayerIndex]]) == 1:
         oneCardPlayer = True
-        print(getPseudo(playersOrder[currentPlayerIndex]) + " n'a plus que 1 carte \n")
+        console.print("[italic] " + getPseudo(playersOrder[currentPlayerIndex]) + "[/italic] only has 1 card left\n")
         while oneCardPlayer:
-            choice = input("Qu'avez vous à lui dire : ")
+            console.print("[bold] ❓ What do you have to say to him? |'uno' or 'contre uno'|[/bold]")
+            choice = input(" >> ")
             if choice == "uno" and str((myIPAddr, multicast_port_me)) == playersOrder[currentPlayerIndex]:
                 oneCardPlayer = False
                 s.sendto(json.dumps({"api": "contreUno", "data": choice}).encode(),
@@ -339,42 +344,44 @@ def placeCard(player, card):
     increasePlayerIndex()
 
 
-def printPlayerDeck(placable=False):
-    print("voici toute vos cartes : \n")
-    for card in playersDeck[str((myIPAddr, multicast_port_me))]:
-        print(getStringFromCard(card))
-    print("\nveuillez choisir une carte \n")
+def printPlayerDeck():
+    console.print("[bold] ℹ️ Here are all your cards, choose the card you want to play:\n")
     cards = playersDeck[str((myIPAddr, multicast_port_me))]
-    if placable:
-        cards = getPlacableCard(cards)
-    for i in range(len(cards)):
-        print(str(i + 1) + ". " + getStringFromCard(cards[i]))
-    print("\n")
+    placable_cards = getPlacableCard(cards)
+    for i in range(len(placable_cards)):
+        console.print(str(i + 1) + ". " + getStringFromCard(placable_cards[i]))
+    for card in cards:
+        if card not in placable_cards:
+            console.print("   " + getStringFromCard(card))
+    console.print("\n")
 
 
 def getPlayerInput(max):
-    choice = input("votre choix : ")
-    if not choice.isnumeric(): return getPlayerInput(max)
-    if int(choice) <= 0 or int(choice) > max: return getPlayerInput(max)
-    return choice
+    console.print("[bold] ➡️ Your choice |1.." + str(max) + "|: [/bold]")
+    choice_card = input(" >> ")
+    if not choice_card.isnumeric():
+        console.print("[bold] ❌ Wrong choice, please try again")
+        return getPlayerInput(max)
+    if int(choice_card) <= 0 or int(choice_card) > max:
+        console.print("[bold] ❌ Wrong choice, please try again")
+        return getPlayerInput(max)
+    return choice_card
 
 
 def getPlayerCardChoice():
     global playerThatShouldPioche
     if canPlayerPlay(playersOrder[currentPlayerIndex]):
-        printPlayerDeck(placable=True)
+        printPlayerDeck()
         choice = getPlayerInput(len(getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])))
         print("")
         card = getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice) - 1].copy()
-        if getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice) - 1]["color"] == None:
-            print("vous devez choisir la couleur \n")
-            for i in range(len(color)):
-                print(str(i + 1) + ". " + color[i])
+        if getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice) - 1]["color"] is None:
+            console.print("[bold] ➡️ You have to choose the color:[/bold] [#ff0000]1[/#ff0000] - [#00ff00]2[/#00ff00] - [#0000ff]3[/#0000ff] - [#ffff00]4[/#ffff00]")
             colorChoice = getPlayerInput(len(color))
             card["color"] = color[int(colorChoice) - 1]
         return card
     else:
-        print("vous ne pouvez poser aucune carte, vous devez donc piocher")
+        console.print("[bold] You can't put any cards down, so you have to draw")
         playerThatShouldPioche = str((myIPAddr, multicast_port_me))
         s.sendto(json.dumps({"api": "askPioche"}).encode(), (multicast_group, multicast_port_other))
         while playerThatShouldPioche != None:
@@ -390,9 +397,18 @@ def isGameOver():
 
 
 def getStringFromCard(jsonCard):
-    if jsonCard["color"] != None:
-        return jsonCard["card"] + " de couleur " + jsonCard["color"]
-    return jsonCard["card"]
+    if jsonCard["color"] is not None:
+        c = ""
+        if jsonCard["color"] == "red":
+            c = "#ff0000"
+        elif jsonCard["color"] == "yellow":
+            c = "#ffff00"
+        elif jsonCard["color"] == "blue":
+            c = "#0000ff"
+        elif jsonCard["color"] == "green":
+            c = "#00ff00"
+        return "[bold " + c + "]" + "< " + jsonCard["card"] + " >" + "[/bold " + c + "]"
+    return "[bold] < " + jsonCard["card"] + " > [/bold]"
 
 
 def chooseFirstCard():
@@ -416,8 +432,8 @@ def getPlacableCard(cards):
 
 def getARandomCard():
     result = {"card": random.choice(allCards), "color": random.choice(color)}
-    if result["card"] in ["colorChange", "+4"]:
-        result["color"] = None
+    while result["card"] in ["colorChange", "+4"]:
+        result = {"card": random.choice(allCards), "color": random.choice(color)}
     return result
 
 
@@ -429,9 +445,9 @@ def pioche(player, card):
     global playerThatShouldPioche
     playersDeck[playerThatShouldPioche].append(card)
     if playerThatShouldPioche == str((myIPAddr, multicast_port_me)):
-        print("vous avez pioché la carte : " + getStringFromCard(card))
+        console.print("[bold] You have drawn the card: [/bold]", getStringFromCard(card))
     else:
-        print(getPseudo(player) + " à pioché")
+        console.print("[italic] " + getPseudo(player) + "[/italic]" + " has picked")
     print("")
     playerThatShouldPioche = None
     increasePlayerIndex()
@@ -442,9 +458,9 @@ def malusPioche(player, cards):
     for card in cards:
         playersDeck[player].append(card)
         if player == str((myIPAddr, multicast_port_me)):
-            print("vous avez pioché " + getStringFromCard(card))
+            console.print("[bold] You have picked [/bold]" + getStringFromCard(card))
         else:
-            print(getPseudo(player) + " a pioché une carte")
+            console.print("[italic] " + getPseudo(player) + "[/italic]" + " has picked one card")
     print("")
     malusPlayer = None
 
@@ -507,4 +523,4 @@ while not isGameOver():
             s.sendto(json.dumps({"api": "play", "data": {"card": choice}}).encode(),
                      (multicast_group, multicast_port_other))
             placeCard(str((myIPAddr, multicast_port_me)), choice)
-print("la partie est fini")
+console.print(Markdown("# 🎉 The game is over! 🎉"))
