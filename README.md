@@ -1,12 +1,18 @@
 <h1 align="center" style="color: #DC143CFF">PolyUno</h1>
 
-Le but du projet est de developer un jeu de UNO en utilisant le protocole UDP en multicast décentralisé, car il n'y a pas de serveur.
+Le but du projet est de developer un jeu de UNO en utilisant le protocole UDP en multicast de manière décentralisé.
+
+__Screenshot__
+
+![Screenshot](./screenshot.png)
 
 ## Description du fonctionnement de l'API
 
 ![UML](./UML/sequence.jpg)
 
 ## Guide d'utilisation
+
+Il est nécessaire d'avoir le package `rich` d'installé.
 
 Lancer la version basique du jeu : 
 
