@@ -234,7 +234,13 @@ def waitingRoom():
 
 allCards = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "invert", "+2", "+4", "colorChange", "pass"]
 color = ["red", "green", "blue", "yellow"]
-
+cardsProbability = {"+4":4,"pass":8,"invert":8,"+2":8}
+for i in range(10):
+    cardsProbability[str(i)] = 8
+cardsChoice = []
+for i in cardsProbability:
+    for x in range(cardsProbability[i]):
+        cardsChoice.append(i)
 
 def createADeck():
     result = []
@@ -415,7 +421,7 @@ def getPlacableCard(cards):
 
 
 def getARandomCard():
-    result = {"card": random.choice(allCards), "color": random.choice(color)}
+    result = {"card": random.choice(cardsChoice), "color": random.choice(color)}
     if result["card"] in ["colorChange", "+4"]:
         result["color"] = None
     return result
