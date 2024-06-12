@@ -6,15 +6,11 @@ __Screenshot__
 
 ![Screenshot](./screenshot.png)
 
-## Description du fonctionnement de l'API
-
-![UML](./UML/sequence.jpg)
-
 ## Guide d'utilisation
 
-Il est nécessaire d'avoir le package `rich` d'installé.
+Il est nécessaire d'avoir le package [rich](https://github.com/Textualize/rich) d'installé.
 
-Lancer la version basique du jeu : 
+Lancer la version basique du jeu :
 
     python3 game.py
 
@@ -27,6 +23,10 @@ Lancer deux versions du jeu sur la même machine (dans des terminals différents
     python3 game.py -debug-server
 
     python game.py -debug-client
+
+## Description du fonctionnement de l'API
+
+![UML](./UML/sequence.jpg)
 
 ## Fonctionnement du réseau
 
