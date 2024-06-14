@@ -151,6 +151,7 @@ def handle_api(data, addr):
         currentCard = data["data"]
         console.print("\n[bold] ➡️ The last card played is: [/bold]", getStringFromCard(currentCard), "\n")
     elif data["api"] == "askPioche":
+        #If the request is a player asking a Malus
         if canPlayerPlay(str((addr[0], addr[1]))):
             if args.debug:
                 print("un joueur a essayer de piocher alors qu'il pouvait jouer")
@@ -164,6 +165,7 @@ def handle_api(data, addr):
         else:
             print("")
     elif data["api"] == "givePioche":
+        #If the request contain the card have been drawed
         while playerThatShouldPioche == None:
             continue
         otherPlayerIndex = playersOrder.index(playerThatShouldPioche)
@@ -176,6 +178,7 @@ def handle_api(data, addr):
             return
         pioche(str((addr[0], addr[1])), data["card"])
     elif data["api"] == "askMalus":
+        #If the request is a player asking a Malus
         if malusPlayer == None:  # if no one need to draw
             if args.debug: print("personne n'a de malus")
             return
@@ -192,6 +195,7 @@ def handle_api(data, addr):
                      (multicast_group, multicast_port_other))
             malusPioche(str((addr[0], addr[1])), result)
     elif data["api"] == "giveMalus":
+        #If the request contain the card have been drawed
         otherPlayerIndex = playersOrder.index(malusPlayer)
         playerIndex = playersOrder.index(str((addr[0], addr[1])))
         otherPlayerIndex += 1
@@ -230,16 +234,16 @@ def listen():
     global playersOrder
     while True:
         data, address = s.recvfrom(2048)
-        if str((address[0], address[1])) == str((myIPAddr, multicast_port_me)):
+        if str((address[0], address[1])) == str((myIPAddr, multicast_port_me)): #if the sender is myself
             continue
         data = json.loads(data.decode())
         if args.debug:
             print(data)
-        if str((address[0], address[1])) not in allPlayersIp:
+        if str((address[0], address[1])) not in allPlayersIp:#if the sender is a new player
             if len(allPlayersIp) == len(readyPlayer):
                 continue
             allPlayersIp.add(str((address[0], address[1])))
-            reportPresence()
+            reportPresence()#report to the new player our presence
         handle_api(data, address)
 
 
@@ -337,7 +341,7 @@ def placeCard(player, card):
     global playersOrder
     global currentPlayerIndex
     global oneCardPlayer
-    if card["card"] in ["colorChange", "+4"]:
+    if card["card"] in ["colorChange", "+4"]:#Si la carte est une carte sans couleur
         cardCopy = card.copy()
         cardCopy["color"] = None
         playersDeck[player].remove(cardCopy)
@@ -372,7 +376,7 @@ def placeCard(player, card):
     if card["card"] == "invert":
         reversed(playersOrder)
         currentPlayerIndex = len(playersOrder) - currentPlayerIndex - 1
-    if len(playersDeck[playersOrder[currentPlayerIndex]]) == 1:
+    if len(playersDeck[playersOrder[currentPlayerIndex]]) == 1:#if the current player only have one card left
         oneCardPlayer = True
         console.print("[italic] " + getPseudo(playersOrder[currentPlayerIndex]) + "[/italic] only has 1 card left\n")
         while oneCardPlayer:
