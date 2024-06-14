@@ -1,55 +1,59 @@
-import os
 from socket import *
 import threading
 from time import sleep
 import argparse
 import random
 import json
-
 from rich.console import Console
 from rich.markdown import Markdown
-from rich.text import Text
 
 # Init console for TUI
 console = Console(highlight=False)
 
 
 def get_local_ip():
+    """
+    Permet de récupérer l'IP locale de l'utilisateur en se connectant au DNS de Google.
+    :return: L'IP locale de l'utilisateur
+    """
     # Créer un socket UDP
     s = socket(AF_INET, SOCK_DGRAM)
-
     # Connecter le socket à une adresse IP et un port (ici, google.com)
     s.connect(("8.8.8.8", 80))
-
     # Obtenir l'adresse IP locale
     local_ip = s.getsockname()[0]
-
     return local_ip
 
 
+# Parse arguments :
+# To debug start an instance with -debug-server and another with -debug-client
 parser = argparse.ArgumentParser()
-# To debug start an instance with -debug-server True and another with -debug-client True
 parser.add_argument("-debug-server", dest="debug_server", action='store_true')
 parser.add_argument("-debug-client", dest="debug_client", action='store_true')
 parser.add_argument("-debug", dest="debug", action='store_true')
 args = parser.parse_args()
 
+# Définir l'IP et le port
 myIPAddr = get_local_ip()
 multicast_port_me = 55555
 multicast_port_other = multicast_port_me
 
+# Changer le port si l'exécution se fait en local
 if args.debug_server:
     multicast_port_other += 1
 elif args.debug_client:
     multicast_port_me += 1
 
+# IP du groupe multicast
 multicast_group = "224.1.1.1"
 
+# Création du socket UDP
 s = socket(AF_INET, SOCK_DGRAM)
 s.bind(("", multicast_port_me))
 mreq = inet_aton(multicast_group) + inet_aton("0.0.0.0")
 s.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
 
+# Variables globales
 allPlayersIp = set()
 allPlayersIp.add(str((myIPAddr, multicast_port_me)))
 readyPlayer = set()
@@ -62,8 +66,24 @@ malusPlayer = None
 oneCardPlayer = False
 playersPseudo = {}
 
+# Cartes
+allCards = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "invert", "+2", "+4", "colorChange", "pass"]
+color = ["red", "green", "blue", "yellow"]
+cardsProbability = {"+4": 4, "pass": 8, "invert": 8, "+2": 8}
+
+# Probabilité de pioche des cartes
+for i in range(10):
+    cardsProbability[str(i)] = 8
+cardsChoice = []
+for i in cardsProbability:
+    for x in range(cardsProbability[i]):
+        cardsChoice.append(i)
+
 
 def reportPresence():
+    """
+    Envoi un signal de présence en multicast
+    """
     if args.debug:
         print("sending presence")
     s.sendto(json.dumps({"api": "i'm here", "data": playersPseudo[str((myIPAddr, multicast_port_me))]}).encode(),
@@ -73,6 +93,11 @@ def reportPresence():
 
 
 def handle_api(data, addr):
+    """
+    Permet de récupérer et traiter les requêtes entrantes de l'API
+    :param data: Les données de la requête
+    :param addr: L'adresse de la source
+    """
     global currentCard
     global playerThatShouldPioche
     global malusPlayer
@@ -187,7 +212,8 @@ def handle_api(data, addr):
             currentPlayerIndex]):  # if the player who counter is not the one who have only one card
             malusPlayer = playersOrder[currentPlayerIndex]
             oneCardPlayer = False
-            console.print("[italic] " + getPseudo(str((addr[0], addr[1]))) + "[/italic] said 'contre' UNO! (press enter)")
+            console.print(
+                "[italic] " + getPseudo(str((addr[0], addr[1]))) + "[/italic] said 'contre' UNO! (press enter)")
             if (str((myIPAddr, multicast_port_me)) == playersOrder[
                 currentPlayerIndex]):  # if i'm the player that have to draw
                 s.sendto(json.dumps({"api": "askMalus", "cardsNumber": "2"}).encode(),
@@ -197,6 +223,9 @@ def handle_api(data, addr):
 
 
 def listen():
+    """
+    Thread qui écoute les requêtes entrantes
+    """
     global otherPlayersDeckVersions
     global playersOrder
     while True:
@@ -215,6 +244,9 @@ def listen():
 
 
 def readyToPlay():
+    """
+    Envoie l'information que le joueur est prêt à lancer la partie
+    """
     console.print("[bold green] ✅ You're ready to play\n")
     readyPlayer.add(str((myIPAddr, multicast_port_me)))
     s.sendto(json.dumps({"api": "i'm ready"}).encode(), (multicast_group, multicast_port_other))
@@ -223,6 +255,9 @@ def readyToPlay():
 
 
 def waitingRoom():
+    """
+    Phase d'attente d'autres joueurs à rejoindre la partie
+    """
     if len(allPlayersIp) < 2:
         console.print("[bold blue] ℹ️ Waiting players\n")
     while len(allPlayersIp) < 2:
@@ -236,17 +271,11 @@ def waitingRoom():
     console.clear()
 
 
-allCards = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "invert", "+2", "+4", "colorChange", "pass"]
-color = ["red", "green", "blue", "yellow"]
-cardsProbability = {"+4":4,"pass":8,"invert":8,"+2":8}
-for i in range(10):
-    cardsProbability[str(i)] = 8
-cardsChoice = []
-for i in cardsProbability:
-    for x in range(cardsProbability[i]):
-        cardsChoice.append(i)
-
 def createADeck():
+    """
+    Crée le jeu d'un joueur avec 8 cartes
+    :return: Un tableau de 8 cartes
+    """
     result = []
     for i in range(8):
         result.append(getARandomCard())
@@ -254,6 +283,9 @@ def createADeck():
 
 
 def defineOtherPlayerDeck():
+    """
+    Choisi le jeu d'un autre joueur et informe les autres
+    """
     global playersOrder
     global playersDeck
     playersOrder = sorted(list(allPlayersIp))
@@ -273,6 +305,10 @@ def defineOtherPlayerDeck():
 
 
 def isGameFinished():
+    """
+    Vérifie si la partie est terminée
+    :return: Bool
+    """
     for player in playersDeck:
         if len(playersDeck[player]) == 0:
             return True
@@ -280,6 +316,9 @@ def isGameFinished():
 
 
 def increasePlayerIndex():
+    """
+    Choisi l'index du prochain joueur
+    """
     global currentPlayerIndex
     if currentPlayerIndex != len(playersOrder) - 1:
         currentPlayerIndex += 1
@@ -288,6 +327,11 @@ def increasePlayerIndex():
 
 
 def placeCard(player, card):
+    """
+    Permet à un joueur de jouer une carte et informe les autres avec la gestion des malus.
+    :param player: Le joueur de la carte.
+    :param card: La carte a joué.
+    """
     global currentCard
     global malusPlayer
     global playersOrder
@@ -351,6 +395,9 @@ def placeCard(player, card):
 
 
 def printPlayerDeck():
+    """
+    Affiche les cartes du joueur dans le terminal
+    """
     console.print("[bold] ℹ️ Here are all your cards, choose the card you want to play:\n")
     cards = playersDeck[str((myIPAddr, multicast_port_me))]
     placable_cards = getPlacableCard(cards)
@@ -363,6 +410,11 @@ def printPlayerDeck():
 
 
 def getPlayerInput(max):
+    """
+    Affiche le prompt pour demander de choisir une carte
+    :param max: Le nombre maximal du choix.
+    :return: La carte choisie
+    """
     console.print("[bold] ➡️ Your choice |1.." + str(max) + "|: [/bold]")
     choice_card = input(" >> ")
     if not choice_card.isnumeric():
@@ -375,6 +427,10 @@ def getPlayerInput(max):
 
 
 def getPlayerCardChoice():
+    """
+    Récupère le choix du joueur et envoi le choix aux autres
+    :return: La carte choisie
+    """
     global playerThatShouldPioche
     if canPlayerPlay(playersOrder[currentPlayerIndex]):
         printPlayerDeck()
@@ -382,7 +438,8 @@ def getPlayerCardChoice():
         print("")
         card = getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice) - 1].copy()
         if getPlacableCard(playersDeck[playersOrder[currentPlayerIndex]])[int(choice) - 1]["color"] is None:
-            console.print("[bold] ➡️ You have to choose the color:[/bold] [#ff0000]1[/#ff0000] - [#00ff00]2[/#00ff00] - [#0000ff]3[/#0000ff] - [#ffff00]4[/#ffff00]")
+            console.print(
+                "[bold] ➡️ You have to choose the color:[/bold] [#ff0000]1[/#ff0000] - [#00ff00]2[/#00ff00] - [#0000ff]3[/#0000ff] - [#ffff00]4[/#ffff00]")
             colorChoice = getPlayerInput(len(color))
             card["color"] = color[int(colorChoice) - 1]
         return card
@@ -395,14 +452,12 @@ def getPlayerCardChoice():
         return None
 
 
-def isGameOver():
-    for player in playersDeck:
-        if len(playersDeck[player]) == 0:
-            return True
-    return False
-
-
 def getStringFromCard(jsonCard):
+    """
+    Renvoie une carte sous forme de chaine de caractères.
+    :param jsonCard: Une carte sous le format JSON
+    :return: String
+    """
     if jsonCard["color"] is not None:
         c = ""
         if jsonCard["color"] == "red":
@@ -418,6 +473,9 @@ def getStringFromCard(jsonCard):
 
 
 def chooseFirstCard():
+    """
+    Choisi la première carte du jeu affiché
+    """
     global currentCard
     choice = getARandomCard()
     s.sendto(json.dumps({"api": "firstCard", "data": choice}).encode(), (multicast_group, multicast_port_other))
@@ -425,6 +483,11 @@ def chooseFirstCard():
 
 
 def getPlacableCard(cards):
+    """
+    Permet de sélectionner toutes les cartes jouables actuellement.
+    :param cards: La liste de toutes les cartes.
+    :return: Les cartes jouables.
+    """
     result = []
     for card in cards:
         if str(card["color"]) == "None":
@@ -437,6 +500,10 @@ def getPlacableCard(cards):
 
 
 def getARandomCard():
+    """
+    Choisir une carte aléatoirement en fonction des probabilités
+    :return: Une carte
+    """
     result = {"card": random.choice(cardsChoice), "color": random.choice(color)}
     while result["card"] in ["colorChange", "+4"]:
         result = {"card": random.choice(cardsChoice), "color": random.choice(color)}
@@ -444,10 +511,20 @@ def getARandomCard():
 
 
 def canPlayerPlay(player):
+    """
+    Détermine si un joueur peut jouer
+    :param player: Le joueur
+    :return: Bool
+    """
     return len(getPlacableCard(playersDeck[player])) > 0
 
 
 def pioche(player, card):
+    """
+    Permet de piocher une carte et de l'afficher au joueur
+    :param player: Le joueur
+    :param card: La carte choisie par les autres
+    """
     global playerThatShouldPioche
     playersDeck[playerThatShouldPioche].append(card)
     if playerThatShouldPioche == str((myIPAddr, multicast_port_me)):
@@ -460,6 +537,11 @@ def pioche(player, card):
 
 
 def malusPioche(player, cards):
+    """
+    Permet de gérer les cartes avec de mauls qui déclenche une pioche.
+    :param player: Le joueur.
+    :param cards: Les cartes piochées.
+    """
     global malusPlayer
     for card in cards:
         playersDeck[player].append(card)
@@ -472,6 +554,11 @@ def malusPioche(player, cards):
 
 
 def amIThePlayerThatChooseCard(otherPlayer):
+    """
+    Permet de savoir si le joueur est celui qui doit jouer.
+    :param otherPlayer: La liste des joueurs.
+    :return: Bool
+    """
     otherPlayerIndex = playersOrder.index(otherPlayer)
     myIndex = playersOrder.index(str((myIPAddr, multicast_port_me)))
     otherPlayerIndex += 1
@@ -481,6 +568,10 @@ def amIThePlayerThatChooseCard(otherPlayer):
 
 
 def askPseudo():
+    """
+    Permet de demander le pseudo du joueur.
+    :return: Le pseudo.
+    """
     # UI
     def ui(error):
         console.clear()
@@ -505,11 +596,17 @@ def askPseudo():
 
 
 def getPseudo(addr):
+    """
+    Renvoie le pseudo lié à l'adresse
+    :param addr: L'adresse du joueur
+    :return: Son pseudo
+    """
     return playersPseudo[addr]
 
 
 currentPlayerIndex = 0
 
+# Lancement du jeu avec les différentes étapes
 askPseudo()
 x = threading.Thread(target=listen)
 x.start()
@@ -517,15 +614,17 @@ sleep(0.1)
 reportPresence()
 waitingRoom()
 
+# Choix des cartes des autres joueurs
 defineOtherPlayerDeck()
 if str((myIPAddr, multicast_port_me)) == playersOrder[len(playersOrder) - 1]:
     chooseFirstCard()
-while currentCard == None:
+while currentCard is None:
     continue
-while not isGameOver():
+# Lance la partie et attend qu'elle se termine.
+while not isGameFinished():
     if playersOrder[currentPlayerIndex] == str((myIPAddr, multicast_port_me)):
         choice = getPlayerCardChoice()
-        if choice != None:
+        if choice is not None:
             s.sendto(json.dumps({"api": "play", "data": {"card": choice}}).encode(),
                      (multicast_group, multicast_port_other))
             placeCard(str((myIPAddr, multicast_port_me)), choice)
